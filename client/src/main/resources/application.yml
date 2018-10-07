@@ -1,0 +1,36 @@
+issuer.uri: http://localhost:9000/auth/realms/todo-api
+auth-server.uri: ${issuer.uri}/protocol/openid-connect
+resource-server.uri: http://localhost:8090
+
+keycloak:
+  logout-uri: ${auth-server.uri}/logout
+
+spring.security.oauth2.client.registration.authorization-code.todo:
+  provider: todo
+  client-id: todo-client
+  client-secret: 9299ff05-1eca-45f1-a8ea-85d376943b20
+  client-authentication-method: basic
+  redirect-uri: http://localhost:8080/login/oauth2/code/todo-client
+  authorization-grant-type: authorization_code
+  scope: todo:read,todo:write
+  client-name: todo-client
+
+spring.security.oauth2.client.provider.todo:
+  authorization-uri: ${auth-server.uri}/auth
+  token-uri: ${auth-server.uri}/token
+  user-info-uri: ${auth-server.uri}/userinfo
+  user-info-authentication-method: basic
+  user-name-attribute: preferred_username
+  jwk-set-uri: ${auth-server.uri}/certs
+  issuer-uri: ${issuer.uri}
+
+logging:
+  level:
+    org.springframework:
+      security: trace
+
+spring.jackson:
+  date-format: com.fasterxml.jackson.databind.util.StdDateFormat
+  time-zone: Asia/Tokyo
+  property-naming-strategy: SNAKE_CASE
+

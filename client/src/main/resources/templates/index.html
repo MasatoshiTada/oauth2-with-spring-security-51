@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>TODO一覧</title>
+    <link rel="stylesheet" href="../static/css/style.css"
+          th:href="@{/css/style.css}">
+</head>
+<body>
+<h1>TODO一覧</h1>
+
+<p><span sec:authentication="name">ユーザー</span>さんログイン中</p>
+
+<form action="index.html" th:action="@{/add}" method="post">
+    <table>
+        <tr>
+            <th>内容</th>
+            <td>
+                <input type="text" name="description">
+            </td>
+        </tr>
+        <tr>
+            <th>締切</th>
+            <td>
+                <input type="date" name="deadline">
+            </td>
+        </tr>
+    </table>
+    <input type="submit" value="登録">
+</form>
+
+<hr>
+
+<table>
+    <tr>
+        <th>ID</th>
+        <th>内容</th>
+        <th>登録日時</th>
+        <th>締切</th>
+        <th>完了済み</th>
+        <th>完了済みにする</th>
+        <th>削除する</th>
+    </tr>
+    <tr th:each="todo : ${todoList}" th:object="${todo}">
+        <td th:text="*{id}">1</td>
+        <td th:text="*{description}">牛乳を買う</td>
+        <td th:text="*{#temporals.format(createdAt, 'yyyy-MM-dd HH:mm')}">2018-10-31 13:00</td>
+        <td th:text="*{#temporals.format(deadline, 'yyyy-MM-dd')}">2018-11-05</td>
+        <td th:text="*{done}">
+            false
+        </td>
+        <td>
+            <form action="index.html" th:action="@{/update}" method="post">
+                <input type="hidden" name="id" th:value="*{id}">
+                <input type="submit" value="完了済みにする">
+            </form>
+        </td>
+        <td>
+            <form action="index.html" th:action="@{/delete}" method="post">
+                <input type="hidden" name="id" th:value="*{id}">
+                <input type="submit" value="削除する">
+            </form>
+        </td>
+    </tr>
+    <!--/*-->
+    <tr>
+        <td>2</td>
+        <td>牛乳を買う</td>
+        <td>2018-10-31 13:00</td>
+        <td>2018-11-05</td>
+        <td>false</td>
+        <td>
+            <form action="index.html" method="post">
+                <input type="hidden" name="id" value="2">
+                <input type="submit" value="完了済みにする">
+            </form>
+        </td>
+        <td>
+            <form action="index.html" method="post">
+                <input type="hidden" name="id" value="2">
+                <input type="submit" value="削除する">
+            </form>
+        </td>
+    </tr>
+    <tr>
+        <td>3</td>
+        <td>牛乳を買う</td>
+        <td>2018-10-31 13:00</td>
+        <td>2018-11-05</td>
+        <td>false</td>
+        <td>
+            <form action="index.html" method="post">
+                <input type="hidden" name="id" value="3">
+                <input type="submit" value="完了済みにする">
+            </form>
+        </td>
+        <td>
+            <form action="index.html" method="post">
+                <input type="hidden" name="id" value="3">
+                <input type="submit" value="削除する">
+            </form>
+        </td>
+    </tr>
+    <!--*/-->
+</table>
+
+<form action="login.html" th:action="@{/login}" method="post">
+    <input type="submit" value="ログアウト">
+</form>
+
+</body>
+</html>

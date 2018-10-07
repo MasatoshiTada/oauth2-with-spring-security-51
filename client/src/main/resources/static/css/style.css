@@ -1,0 +1,15 @@
+h1 {
+    background-color: orange;
+}
+
+.error {
+    color: red;
+}
+
+th {
+    background-color: orange;
+}
+
+table, th, td {
+    border: solid 1px;
+}

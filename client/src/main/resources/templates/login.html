@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>OAuth2ログインページ</title>
+    <link rel="stylesheet" href="../static/css/style.css"
+          th:href="@{/css/style.css}">
+</head>
+<body>
+<h1>OAuth2ログインページ</h1>
+<a th:href="@{/oauth2/authorization/todo}">Keycloakでログイン</a>
+</body>
+</html>
