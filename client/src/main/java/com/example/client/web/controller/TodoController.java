@@ -3,6 +3,8 @@ package com.example.client.web.controller;
 import com.example.client.service.TodoService;
 import com.example.client.service.dto.Todo;
 import com.example.client.web.form.TodoForm;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -15,6 +17,8 @@ import java.util.List;
 @Controller
 public class TodoController {
 
+    private static final Logger logger = LoggerFactory.getLogger(TodoController.class);
+
     private final TodoService todoService;
 
     public TodoController(TodoService todoService) {
@@ -23,7 +27,7 @@ public class TodoController {
 
     @GetMapping("/")
     public String index(Model model, Authentication authentication) {
-        System.out.println(authentication);
+        logger.info("{}", authentication);
         List<Todo> todoList = todoService.findAll();
         model.addAttribute("todoList", todoList);
         return "index";
