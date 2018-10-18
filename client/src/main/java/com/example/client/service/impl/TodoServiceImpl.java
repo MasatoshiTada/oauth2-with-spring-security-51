@@ -61,7 +61,7 @@ public class TodoServiceImpl implements TodoService {
         HttpHeaders httpHeaders = new HttpHeaders();
         // "Authorization: Bearer <ACCESS_TOKEN>"というヘッダーを追加
         httpHeaders.add(HttpHeaders.AUTHORIZATION,
-                "Bearer " + oAuth2TokenService.getTokenValue());
+                "Bearer " + oAuth2TokenService.getAccessTokenValue());
         // HttpEntityを作成
         HttpEntity<Object> httpEntity = new HttpEntity<>(requestBody, httpHeaders);
         return httpEntity;

@@ -26,7 +26,7 @@ public class KeycloakService {
 
     private final RestTemplate restTemplate;
     private final OAuth2TokenService oAuth2TokenService;
-    private final OAuth2ClientProperties.AuthorizationCodeClientRegistration registration;
+    private final OAuth2ClientProperties.Registration registration;
     private final KeycloakProperties keycloakProperties;
 
     public KeycloakService(RestTemplate restTemplate,
@@ -35,7 +35,7 @@ public class KeycloakService {
                            KeycloakProperties keycloakProperties) {
         this.restTemplate = restTemplate;
         this.oAuth2TokenService = oAuth2TokenService;
-        this.registration = oAuth2ClientProperties.getRegistration().getAuthorizationCode().get("hello");
+        this.registration = oAuth2ClientProperties.getRegistration().get("todo");
         this.keycloakProperties = keycloakProperties;
     }
 
@@ -48,7 +48,7 @@ public class KeycloakService {
         MultiValueMap<String, String> formParams = new LinkedMultiValueMap<>();
         formParams.add("client_id", registration.getClientId());
         formParams.add("client_secret", registration.getClientSecret());
-        formParams.add("refresh_token", oAuth2TokenService.getRefreshValue());
+        formParams.add("refresh_token", oAuth2TokenService.getRefreshTokenValue());
         // リクエストヘッダーを作成
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE);

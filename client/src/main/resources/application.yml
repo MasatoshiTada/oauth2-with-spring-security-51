@@ -5,7 +5,7 @@ resource-server.uri: http://localhost:8090
 keycloak:
   logout-uri: ${auth-server.uri}/logout
 
-spring.security.oauth2.client.registration.authorization-code.todo:
+spring.security.oauth2.client.registration.todo:
   provider: todo
   client-id: todo-client
   client-secret: 9299ff05-1eca-45f1-a8ea-85d376943b20
@@ -21,7 +21,7 @@ spring.security.oauth2.client.provider.todo:
   user-info-uri: ${auth-server.uri}/userinfo
   user-info-authentication-method: basic
   user-name-attribute: preferred_username
-  jwk-set-uri: ${auth-server.uri}/certs
+#  jwk-set-uri: ${auth-server.uri}/certs  # not necessary if using Keycloak
   issuer-uri: ${issuer.uri}
 
 logging:
