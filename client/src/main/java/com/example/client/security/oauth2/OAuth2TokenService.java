@@ -57,11 +57,21 @@ public class OAuth2TokenService {
         OAuth2AccessToken accessToken = getAuthorizedClient().getAccessToken();
         // アクセストークンが期限切れだったらリフレッシュ
         if (isExpiredToken(accessToken)) {
+            logger.debug("Access token was expired!");
             refresh();
             accessToken = getAuthorizedClient().getAccessToken();
         }
         String tokenValue = accessToken.getTokenValue();
-        logger.info("access_token = {}", tokenValue);
+        logger.debug("access_token = {}", tokenValue);
+        return tokenValue;
+    }
+
+    /**
+     * リフレッシュトークンの値を取得する。
+     */
+    public String getRefreshTokenValue() {
+        OAuth2RefreshToken refreshToken = getAuthorizedClient().getRefreshToken();
+        String tokenValue = refreshToken.getTokenValue();
         return tokenValue;
     }
 
@@ -76,12 +86,11 @@ public class OAuth2TokenService {
      * リフレッシュトークンでアクセストークンを再取得する。
      */
     private void refresh() {
-        String tokenUri = provider.getTokenUri();
-        String refreshTokenValue = getRefreshTokenValue();
         // POSTするリクエストパラメーターを作成
         MultiValueMap<String, String> formParams = new LinkedMultiValueMap<>();
         formParams.add("grant_type", "refresh_token");
-        formParams.add("refresh_token", refreshTokenValue);
+        formParams.add("refresh_token", getRefreshTokenValue());
+
         // リクエストヘッダーを作成
         HttpHeaders httpHeaders = new HttpHeaders();
         String clientId = registration.getClientId();
@@ -89,62 +98,71 @@ public class OAuth2TokenService {
         String authHeaderValue = Base64.getEncoder().encodeToString((clientId + ":" + clientSecret).getBytes());
         httpHeaders.add(HttpHeaders.AUTHORIZATION, "Basic " + authHeaderValue);
         httpHeaders.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE);
+
         // リクエストを作成
         RequestEntity<MultiValueMap<String, String>> requestEntity =
-                new RequestEntity<>(formParams, httpHeaders, HttpMethod.POST, URI.create(tokenUri));
-        // POSTリクエスト送信（リフレッシュトークン取得）
-        ResponseEntity<Map<String, String>> responseEntity = restTemplate.exchange(requestEntity, new ParameterizedTypeReference<Map<String, String>>() {});
-        Map<String, String> responseJson = responseEntity.getBody();
-        // ログ出力
-        logger.info("{}", responseEntity.getStatusCode());
-        logger.info("{}", responseJson);
+                new RequestEntity<>(formParams, httpHeaders, HttpMethod.POST, URI.create(provider.getTokenUri()));
 
-        // FIXME きれいにする
+        // POSTリクエスト送信（リフレッシュトークン取得）
+        ResponseEntity<Map<String, String>> responseEntity = restTemplate.exchange(
+                requestEntity, new ParameterizedTypeReference<Map<String, String>>() {});
+        Map<String, String> responseJson = responseEntity.getBody();
+
+        // ログ出力
+        logger.debug("{}", responseEntity.getStatusCode());
+        logger.debug("{}", responseJson);
+
         // 既存のトークンを削除
         OAuth2AuthenticationToken authentication = getAuthentication();
         authorizedClientService.removeAuthorizedClient(
-                authentication.getAuthorizedClientRegistrationId(),
-                authentication.getName());
+                authentication.getAuthorizedClientRegistrationId(), authentication.getName());
 
         // 新しいトークンを登録
-        OAuth2AuthorizedClient authorizedClient =
-                new OAuth2AuthorizedClient(
-                        ClientRegistration.withRegistrationId(authentication.getAuthorizedClientRegistrationId())
-                                .clientId(registration.getClientId())
-                                .clientSecret(registration.getClientSecret())
-                                .clientAuthenticationMethod(new ClientAuthenticationMethod(registration.getClientAuthenticationMethod()))
-                                .authorizationGrantType(new AuthorizationGrantType(registration.getAuthorizationGrantType()))
-                                .redirectUriTemplate(registration.getRedirectUri())
-                                .scope(registration.getScope())
-                                .authorizationUri(provider.getAuthorizationUri())
-                                .tokenUri(provider.getTokenUri())
-                                .userInfoUri(provider.getUserInfoUri())
-                                .userNameAttributeName(provider.getUserNameAttribute())
-                                .jwkSetUri(provider.getJwkSetUri())
-                                .clientName(registration.getClientName())
-                                .build(),
-                        authentication.getName(),
-                        new OAuth2AccessToken(
-                                OAuth2AccessToken.TokenType.BEARER,
-                                responseJson.get("access_token") /* String tokenValue */,
-                                Instant.now() /* Instant issuedAt */,
-                                Instant.now().plus(Integer.parseInt(responseJson.get("expires_in")), ChronoUnit.SECONDS) /* Instant expiresAt */,
-                                Arrays.stream(responseJson.get("scope").split("\\S")).collect(Collectors.toSet()) /* Set<String> scopes */
-                        ),
-                        new OAuth2RefreshToken(
-                                responseJson.get("refresh_token") /* String tokenValue */,
-                                Instant.now() /* Instant issuedAt */
-                        ));
+        OAuth2AuthorizedClient authorizedClient = createAuthorizedClient(authentication, responseJson);
         authorizedClientService.saveAuthorizedClient(authorizedClient, authentication);
     }
 
     /**
-     * リフレッシュトークンの値を取得する。
+     * OAuth2AuthorizedClientを新規作成する。
      */
-    public String getRefreshTokenValue() {
-        OAuth2RefreshToken refreshToken = getAuthorizedClient().getRefreshToken();
-        String tokenValue = refreshToken.getTokenValue();
-        return tokenValue;
+    private OAuth2AuthorizedClient createAuthorizedClient(OAuth2AuthenticationToken authentication, Map<String, String> responseJson) {
+        OAuth2AuthorizedClient authorizedClient = new OAuth2AuthorizedClient(
+                createClientRegistration(authentication),
+                authentication.getName(),
+                new OAuth2AccessToken(
+                        OAuth2AccessToken.TokenType.BEARER,
+                        responseJson.get("access_token"),
+                        Instant.now(),
+                        Instant.now().plus(Integer.parseInt(responseJson.get("expires_in")), ChronoUnit.SECONDS),
+                        Arrays.stream(responseJson.get("scope").split("\\S")).collect(Collectors.toSet())
+                ),
+                new OAuth2RefreshToken(
+                        responseJson.get("refresh_token"),
+                        Instant.now()
+                )
+        );
+        return authorizedClient;
+    }
+
+    /**
+     * ClientRegistrationを作成する。
+     */
+    private ClientRegistration createClientRegistration(OAuth2AuthenticationToken authentication) {
+        return ClientRegistration
+                .withRegistrationId(authentication.getAuthorizedClientRegistrationId())
+                .clientId(registration.getClientId())
+                .clientSecret(registration.getClientSecret())
+                .clientAuthenticationMethod(new ClientAuthenticationMethod(registration.getClientAuthenticationMethod()))
+                .authorizationGrantType(new AuthorizationGrantType(registration.getAuthorizationGrantType()))
+                .redirectUriTemplate(registration.getRedirectUri())
+                .scope(registration.getScope())
+                .authorizationUri(provider.getAuthorizationUri())
+                .tokenUri(provider.getTokenUri())
+                .userInfoUri(provider.getUserInfoUri())
+                .userNameAttributeName(provider.getUserNameAttribute())
+                .jwkSetUri(provider.getJwkSetUri())
+                .clientName(registration.getClientName())
+                .build();
     }
 
     /**
@@ -154,13 +172,15 @@ public class OAuth2TokenService {
         // OAuth2AuthenticationTokenはAuthenticationインタフェース実装クラス
         OAuth2AuthenticationToken authentication = getAuthentication();
         // OAuth2AuthorizedClientを取得
-        OAuth2AuthorizedClient authorizedClient =
-                this.authorizedClientService.loadAuthorizedClient(
-                        authentication.getAuthorizedClientRegistrationId(),
-                        authentication.getName());
+        OAuth2AuthorizedClient authorizedClient = authorizedClientService.loadAuthorizedClient(
+                authentication.getAuthorizedClientRegistrationId(),
+                authentication.getName());
         return authorizedClient;
     }
 
+    /**
+     * OAuth2AuthenticationTokenを取得する。
+     */
     private OAuth2AuthenticationToken getAuthentication() {
         OAuth2AuthenticationToken authentication =
                 (OAuth2AuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
