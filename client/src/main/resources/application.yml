@@ -8,7 +8,7 @@ keycloak:
 spring.security.oauth2.client.registration.todo:
   provider: todo
   client-id: todo-client
-  client-secret: 9299ff05-1eca-45f1-a8ea-85d376943b20
+  client-secret: 48020a9c-16ea-4991-b642-bcd2893ccf8a
   client-authentication-method: basic
   redirect-uri: http://localhost:8080/login/oauth2/code/todo-client
   authorization-grant-type: authorization_code
