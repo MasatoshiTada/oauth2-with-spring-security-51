@@ -26,6 +26,7 @@ spring.security.oauth2.client.provider.todo:
 
 logging:
   level:
+    com.example: debug
     org.springframework:
       security: trace
 

@@ -9,7 +9,7 @@ spring.datasource.sql-script-encoding: utf-8
 
 spring.security.oauth2.resourceserver.jwt:
   issuer-uri: http://localhost:9000/auth/realms/todo-api
-  jwk-set-uri: http://localhost:9000/auth/realms/todo-api/protocol/openid-connect/certs
+#  jwk-set-uri: http://localhost:9000/auth/realms/todo-api/protocol/openid-connect/certs  # not necessary if using Keycloak
 
 logging:
   level:
