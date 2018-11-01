@@ -16,10 +16,10 @@ spring.security.oauth2.client.registration.todo:
   client-name: todo-client
 
 spring.security.oauth2.client.provider.todo:
-  authorization-uri: ${auth-server.uri}/auth
-  token-uri: ${auth-server.uri}/token
-  user-info-uri: ${auth-server.uri}/userinfo
-  user-info-authentication-method: basic
+#  authorization-uri: ${auth-server.uri}/auth
+#  token-uri: ${auth-server.uri}/token
+#  user-info-uri: ${auth-server.uri}/userinfo
+#  user-info-authentication-method: basic
   user-name-attribute: preferred_username
 #  jwk-set-uri: ${auth-server.uri}/certs  # not necessary if using Keycloak
   issuer-uri: ${issuer.uri}
