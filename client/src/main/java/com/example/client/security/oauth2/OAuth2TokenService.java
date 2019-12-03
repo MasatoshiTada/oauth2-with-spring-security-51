@@ -105,7 +105,7 @@ public class OAuth2TokenService {
 
         // POSTリクエスト送信（リフレッシュトークン取得）
         ResponseEntity<Map<String, String>> responseEntity = restTemplate.exchange(
-                requestEntity, new ParameterizedTypeReference<Map<String, String>>() {});
+                requestEntity, new ParameterizedTypeReference<>() {});
         Map<String, String> responseJson = responseEntity.getBody();
 
         // ログ出力
