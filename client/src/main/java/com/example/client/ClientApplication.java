@@ -1,14 +1,19 @@
 package com.example.client;
 
+import com.example.client.security.oauth2.OAuth2TokenService;
 import com.example.client.web.filter.LoggingFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.boot.web.client.RestTemplateRequestCustomizer;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.web.client.RestTemplate;
 
 @SpringBootApplication
@@ -33,11 +38,24 @@ public class ClientApplication {
 
     @Bean
     public RestTemplate restTemplate(RestTemplateBuilder builder) {
-        builder.additionalInterceptors((request, body, execution) -> {
-            logger.info("リクエスト送信中: {} {}", request.getMethod(), request.getURI());
-            ClientHttpResponse response = execution.execute(request, body);
-            return response;
-        });
         return builder.build();
     }
+
+    /**
+     * RestTemplateがリクエストを送信する直前に割り込む処理を定義しています。
+     * OAuth2でのリクエストの際に、Authorizationヘッダーに"Bearer アクセストークン"をセットしています。
+     */
+    @Bean
+    public RestTemplateRequestCustomizer oAuth2RestTemplateRequestCustomizer(OAuth2TokenService oAuth2TokenService) {
+        return request -> {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            // 認証不要またはOAuth2以外なら何もしない
+            if (authentication == null || !(authentication instanceof OAuth2AuthenticationToken)) {
+                return;
+            }
+            // OAuth2の場合はAuthorizationヘッダーに"Bearer アクセストークン"をセットする
+            request.getHeaders().setBearerAuth(oAuth2TokenService.getAccessTokenValue());
+        };
+    }
+
 }

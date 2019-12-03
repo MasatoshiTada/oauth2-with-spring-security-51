@@ -27,7 +27,7 @@ public class TodoController {
 
     @GetMapping("/")
     public String index(Model model, Authentication authentication) {
-        logger.info("{}", authentication);
+        logger.debug("{}", authentication);
         List<Todo> todoList = todoService.findAll();
         model.addAttribute("todoList", todoList);
         return "index";
