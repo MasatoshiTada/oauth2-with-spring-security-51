@@ -2,16 +2,25 @@ package com.example.client.security.oauth2;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.client.OAuth2AuthorizationContext;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
-import org.springframework.security.oauth2.client.RefreshTokenOAuth2AuthorizedClientProvider;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.client.endpoint.DefaultRefreshTokenTokenResponseClient;
+import org.springframework.security.oauth2.client.endpoint.OAuth2RefreshTokenGrantRequest;
+import org.springframework.security.oauth2.client.http.OAuth2ErrorResponseErrorHandler;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2RefreshToken;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AccessTokenResponse;
+import org.springframework.security.oauth2.core.http.converter.OAuth2AccessTokenResponseHttpMessageConverter;
+import org.springframework.security.oauth2.core.http.converter.OAuth2ErrorHttpMessageConverter;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.time.Instant;
 
 @Service
@@ -20,11 +29,21 @@ public class OAuth2TokenService {
     private static final Logger logger = LoggerFactory.getLogger(OAuth2TokenService.class);
 
     private final OAuth2AuthorizedClientService authorizedClientService;
-    private final RefreshTokenOAuth2AuthorizedClientProvider refreshTokenOAuth2AuthorizedClientProvider;
+    private final DefaultRefreshTokenTokenResponseClient tokenResponseClient;
 
-    public OAuth2TokenService(OAuth2AuthorizedClientService authorizedClientService) {
+    public OAuth2TokenService(OAuth2AuthorizedClientService authorizedClientService, RestTemplateBuilder restTemplateBuilder) {
         this.authorizedClientService = authorizedClientService;
-        this.refreshTokenOAuth2AuthorizedClientProvider = new RefreshTokenOAuth2AuthorizedClientProvider();
+        this.tokenResponseClient = new DefaultRefreshTokenTokenResponseClient();
+        RestTemplate restTemplate = restTemplateBuilder
+                .setConnectTimeout(Duration.ofMillis(300))
+                .setReadTimeout(Duration.ofMillis(300))
+                .errorHandler(new OAuth2ErrorResponseErrorHandler())
+                .messageConverters(
+                        new OAuth2AccessTokenResponseHttpMessageConverter(),
+                        new OAuth2ErrorHttpMessageConverter(),
+                        new FormHttpMessageConverter())
+                .build();
+        tokenResponseClient.setRestOperations(restTemplate);
     }
 
     /**
@@ -33,9 +52,9 @@ public class OAuth2TokenService {
     public String getAccessTokenValue() {
         OAuth2AccessToken accessToken = getAuthorizedClient().getAccessToken();
         // アクセストークンが期限切れだったらリフレッシュ
-        if (isExpiredToken(accessToken)) {
+        if (isExpired(accessToken)) {
             logger.debug("Access token was expired!");
-            accessToken = getRefreshedAccessToken();
+            accessToken = refresh();
         }
         String tokenValue = accessToken.getTokenValue();
         logger.debug("access_token = {}", tokenValue);
@@ -54,36 +73,40 @@ public class OAuth2TokenService {
     /**
      * アクセストークンが期限切れならばtrueを返す。
      */
-    private boolean isExpiredToken(OAuth2AccessToken accessToken) {
+    private boolean isExpired(OAuth2AccessToken accessToken) {
         return accessToken.getExpiresAt().isBefore(Instant.now());
     }
 
     /**
      * リフレッシュトークンでアクセストークンを再取得する。
      */
-    private OAuth2AccessToken getRefreshedAccessToken() {
-        OAuth2AuthenticationToken authentication = getAuthentication();
-        OAuth2AuthorizedClient currentAuthorizedClient = getAuthorizedClient();
-        OAuth2AuthorizationContext context =
-                OAuth2AuthorizationContext.withAuthorizedClient(currentAuthorizedClient)
-                        .principal(authentication)
-                        .build();
+    private OAuth2AccessToken refresh() {
         // トークンをリフレッシュ
-        OAuth2AuthorizedClient refreshedAuthorizedClient = refreshTokenOAuth2AuthorizedClientProvider.authorize(context);
+        OAuth2AuthorizedClient currentAuthorizedClient = getAuthorizedClient();
+        ClientRegistration clientRegistration = currentAuthorizedClient.getClientRegistration();
+        OAuth2RefreshTokenGrantRequest tokenRequest =
+                new OAuth2RefreshTokenGrantRequest(clientRegistration,
+                        currentAuthorizedClient.getAccessToken(),
+                        currentAuthorizedClient.getRefreshToken());
+        OAuth2AccessTokenResponse tokenResponse = tokenResponseClient.getTokenResponse(tokenRequest);
         // インメモリから既存のトークンを削除
         authorizedClientService.removeAuthorizedClient(
-                currentAuthorizedClient.getClientRegistration().getRegistrationId(),
+                clientRegistration.getRegistrationId(),
                 currentAuthorizedClient.getPrincipalName());
         // インメモリに新しいトークンを登録
-        authorizedClientService.saveAuthorizedClient(refreshedAuthorizedClient, authentication);
+        OAuth2AuthenticationToken authentication = getAuthentication();
+        OAuth2AuthorizedClient newAuthorizedClient = new OAuth2AuthorizedClient(
+                clientRegistration, authentication.getName(),
+                tokenResponse.getAccessToken(), tokenResponse.getRefreshToken());
+        authorizedClientService.saveAuthorizedClient(newAuthorizedClient, authentication);
         logger.debug("Refreshing token completed");
-        return refreshedAuthorizedClient.getAccessToken();
+        return tokenResponse.getAccessToken();
     }
 
     /**
      * OAuth2AuthorizedClientを取得する。
      */
-    private OAuth2AuthorizedClient getAuthorizedClient() {
+    public OAuth2AuthorizedClient getAuthorizedClient() {
         // OAuth2AuthenticationTokenはAuthenticationインタフェース実装クラス
         OAuth2AuthenticationToken authentication = getAuthentication();
         // OAuth2AuthorizedClientを取得
@@ -96,9 +119,10 @@ public class OAuth2TokenService {
     /**
      * OAuth2AuthenticationTokenを取得する。
      */
-    private OAuth2AuthenticationToken getAuthentication() {
+    public OAuth2AuthenticationToken getAuthentication() {
         OAuth2AuthenticationToken authentication =
                 (OAuth2AuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         return authentication;
     }
+
 }

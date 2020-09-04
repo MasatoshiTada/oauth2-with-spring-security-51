@@ -10,11 +10,12 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.boot.web.client.RestTemplateRequestCustomizer;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
-import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.web.client.RestTemplate;
+
+import java.time.Duration;
 
 @SpringBootApplication
 public class ClientApplication {
@@ -37,16 +38,14 @@ public class ClientApplication {
     }
 
     @Bean
-    public RestTemplate restTemplate(RestTemplateBuilder builder) {
-        return builder.build();
+    public RestTemplate restTemplate(RestTemplateBuilder builder, OAuth2TokenService oAuth2TokenService) {
+        return builder.setConnectTimeout(Duration.ofMillis(500))
+                .setReadTimeout(Duration.ofMillis(500))
+                .additionalRequestCustomizers(addAccessTokenToHeader(oAuth2TokenService))
+                .build();
     }
 
-    /**
-     * RestTemplateがリクエストを送信する直前に割り込む処理を定義しています。
-     * OAuth2でのリクエストの際に、Authorizationヘッダーに"Bearer アクセストークン"をセットしています。
-     */
-    @Bean
-    public RestTemplateRequestCustomizer oAuth2RestTemplateRequestCustomizer(OAuth2TokenService oAuth2TokenService) {
+    private RestTemplateRequestCustomizer addAccessTokenToHeader(OAuth2TokenService oAuth2TokenService) {
         return request -> {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             // 認証不要またはOAuth2以外なら何もしない
@@ -57,5 +56,4 @@ public class ClientApplication {
             request.getHeaders().setBearerAuth(oAuth2TokenService.getAccessTokenValue());
         };
     }
-
 }

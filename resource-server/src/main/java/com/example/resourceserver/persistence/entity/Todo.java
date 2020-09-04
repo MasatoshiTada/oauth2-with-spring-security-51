@@ -13,7 +13,7 @@ public class Todo {
 
     private String description;
 
-    @Column("created_at")
+    @Column("CREATED_AT")
     private LocalDateTime createdAt;
 
     private LocalDate deadline;

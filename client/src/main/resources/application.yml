@@ -8,11 +8,11 @@ keycloak:
 spring.security.oauth2.client.registration.todo:
   provider: todo
   client-id: todo-client
-  client-secret: 356fa16b-b94d-4b3e-aea9-ddf8ac557205
+  client-secret: efbd681a-343f-442c-8836-7d3a6c11c3d5
   client-authentication-method: basic
   redirect-uri: http://localhost:8080/login/oauth2/code/todo-client
   authorization-grant-type: authorization_code
-  scope: todo:read,todo:write,profile
+  scope: todo:read,todo:write,profile,openid
   client-name: todo-client
 
 spring.security.oauth2.client.provider.todo:
@@ -29,6 +29,7 @@ logging:
     com.example: debug
     org.springframework:
       security: trace
+      web.client.RestTemplate: debug
 
 spring.jackson:
   date-format: com.fasterxml.jackson.databind.util.StdDateFormat
