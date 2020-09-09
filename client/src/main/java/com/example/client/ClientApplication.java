@@ -25,6 +25,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.tcp.TcpClient;
 
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -61,7 +63,8 @@ public class ClientApplication {
     public WebClient webClient(WebClient.Builder builder,
                                @Value("${resource-server.uri}") String resourceServerUri,
                                WebClientProperties webClientProperties,
-                               OAuth2AuthorizedClientManager authorizedClientManager) {
+                               ClientRegistrationRepository clientRegistrationRepository,
+                               OAuth2AuthorizedClientRepository authorizedClientRepository) {
         // タイムアウトを設定
         Function<? super TcpClient, ? extends TcpClient> tcpMapper = tcpClient -> {
             // Connect Timeoutを500msに設定
@@ -82,13 +85,25 @@ public class ClientApplication {
                 .tcpConfiguration(tcpMapper);
         // OAuth2関連の設定
         ServletOAuth2AuthorizedClientExchangeFilterFunction oAuth2Client =
-                new ServletOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
+                new ServletOAuth2AuthorizedClientExchangeFilterFunction(
+                        clientRegistrationRepository, authorizedClientRepository);
         return builder.baseUrl(resourceServerUri)
                 // 作成したHttpClientを追加
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 // OAuth2設定を追加
                 .apply(oAuth2Client.oauth2Configuration())
+                // "Accept: application/json"をデフォルトでリクエストヘッダーに出力する
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                // WebClientからのリクエスト送信時に、ヘッダーをログ出力する
+                .filter((request, next) -> {
+                    logger.debug("~~[Sending request]~~~~~~~~~~~~~~~~~~~~~");
+                    logger.debug("{} {}", request.method(), request.url());
+                    for (Map.Entry<String, List<String>> entry : request.headers().entrySet()) {
+                        logger.debug("{}: {}", entry.getKey(), entry.getValue());
+                    }
+                    logger.debug("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+                    return next.exchange(request);
+                })
                 .build();
     }
 }

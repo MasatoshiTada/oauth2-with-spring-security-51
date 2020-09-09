@@ -6,12 +6,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientProperties;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Keycloakに対する操作を提供するクラス。
@@ -42,10 +42,10 @@ public class KeycloakService {
      */
     public void logout() {
         // POSTするリクエストパラメーターを作成
-        Map<String, String> params = new HashMap<>();
-        params.put("client_id", registration.getClientId());
-        params.put("client_secret", registration.getClientSecret());
-        params.put("refresh_token", oAuth2TokenService.getRefreshTokenValue());
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add(OAuth2ParameterNames.CLIENT_ID, registration.getClientId());
+        params.add(OAuth2ParameterNames.CLIENT_SECRET, registration.getClientSecret());
+        params.add(OAuth2ParameterNames.REFRESH_TOKEN, oAuth2TokenService.getRefreshTokenValue());
         // ログアウトリクエスト送信
         ClientResponse response = webClient.post()
                 .uri(keycloakProperties.getLogoutUri())

@@ -37,7 +37,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .anyRequest().authenticated();
         http.logout()
                 // 認可サーバーからもログアウトする
-                .addLogoutHandler(authServerLogoutHandler())
+                .addLogoutHandler(logoutFromAuthServer())
                 .invalidateHttpSession(true)
                 .permitAll();
     }
@@ -45,7 +45,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     /**
      * 認可サーバーからログアウトするLogoutHandler
      */
-    private LogoutHandler authServerLogoutHandler() {
+    private LogoutHandler logoutFromAuthServer() {
         return (request, response, authentication) -> {
             keycloakService.logout();
         };
