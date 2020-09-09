@@ -5,16 +5,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientProperties;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.http.RequestEntity;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.WebClient;
 
-import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Keycloakに対する操作を提供するクラス。
@@ -24,16 +21,16 @@ public class KeycloakService {
 
     private static final Logger logger = LoggerFactory.getLogger(KeycloakService.class);
 
-    private final RestTemplate restTemplate;
+    private final WebClient webClient;
     private final OAuth2TokenService oAuth2TokenService;
     private final OAuth2ClientProperties.Registration registration;
     private final KeycloakProperties keycloakProperties;
 
-    public KeycloakService(RestTemplate restTemplate,
+    public KeycloakService(WebClient webClient,
                            OAuth2TokenService oAuth2TokenService,
                            OAuth2ClientProperties oAuth2ClientProperties,
                            KeycloakProperties keycloakProperties) {
-        this.restTemplate = restTemplate;
+        this.webClient = webClient;
         this.oAuth2TokenService = oAuth2TokenService;
         this.registration = oAuth2ClientProperties.getRegistration().get("todo");
         this.keycloakProperties = keycloakProperties;
@@ -45,21 +42,19 @@ public class KeycloakService {
      */
     public void logout() {
         // POSTするリクエストパラメーターを作成
-        MultiValueMap<String, String> formParams = new LinkedMultiValueMap<>();
-        formParams.add("client_id", registration.getClientId());
-        formParams.add("client_secret", registration.getClientSecret());
-        formParams.add("refresh_token", oAuth2TokenService.getRefreshTokenValue());
-        // リクエストヘッダーを作成
-        HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE);
-        // リクエストを作成
-        RequestEntity<MultiValueMap<String, String>> requestEntity =
-                new RequestEntity<>(formParams, httpHeaders, HttpMethod.POST,
-                        URI.create(keycloakProperties.getLogoutUri()));
-        // POSTリクエスト送信（ログアウト実行）
-        ResponseEntity<String> responseEntity = restTemplate.exchange(requestEntity, String.class);
+        Map<String, String> params = new HashMap<>();
+        params.put("client_id", registration.getClientId());
+        params.put("client_secret", registration.getClientSecret());
+        params.put("refresh_token", oAuth2TokenService.getRefreshTokenValue());
+        // ログアウトリクエスト送信
+        ClientResponse response = webClient.post()
+                .uri(keycloakProperties.getLogoutUri())
+                .header(HttpHeaders.CONTENT_TYPE,
+                        MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+                .bodyValue(params)
+                .exchange()
+                .block();
         // ログ出力
-        logger.info("{}", responseEntity.getStatusCode());
-        logger.info("{}", responseEntity.getBody());
+        logger.info("{}", response.statusCode());
     }
 }

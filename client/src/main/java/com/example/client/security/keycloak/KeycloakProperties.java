@@ -1,9 +1,7 @@
 package com.example.client.security.keycloak;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
-@Component
 @ConfigurationProperties("keycloak")
 public class KeycloakProperties {
 

@@ -2,13 +2,18 @@ issuer.uri: http://localhost:9000/auth/realms/todo-api
 auth-server.uri: ${issuer.uri}/protocol/openid-connect
 resource-server.uri: http://localhost:8090
 
+web-client:
+  connect-timeout: 500
+  read-timeout: 500
+  write-timeout: 500
+
 keycloak:
   logout-uri: ${auth-server.uri}/logout
 
 spring.security.oauth2.client.registration.todo:
   provider: todo
   client-id: todo-client
-  client-secret: efbd681a-343f-442c-8836-7d3a6c11c3d5
+  client-secret: 3d2786d5-5ba8-4558-b581-b52cdc237d86
   client-authentication-method: basic
   redirect-uri: http://localhost:8080/login/oauth2/code/todo-client
   authorization-grant-type: authorization_code
@@ -29,7 +34,13 @@ logging:
     com.example: debug
     org.springframework:
       security: trace
-      web.client.RestTemplate: debug
+      web:
+        client:
+          RestTemplate: debug
+        reactive:
+          function:
+            client:
+              WebClient: debug
 
 spring.jackson:
   date-format: com.fasterxml.jackson.databind.util.StdDateFormat
